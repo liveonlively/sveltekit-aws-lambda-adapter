@@ -8,7 +8,6 @@
  * and commit the changes.
  */
 
-import url from 'url';
 import { App } from '../app.js';
 import { __fetch_polyfill } from '@sveltejs/kit/install-fetch';
 __fetch_polyfill();
@@ -16,36 +15,37 @@ __fetch_polyfill();
 export function init(manifest) {
 	const app = new App(manifest);
 
-	return async (event) => {
-		const {
-			rawPath: path,
-			rawQueryString,
-			headers,
-			body,
-			cookies: reqCookies,
-			isBase64Encoded,
-		} = event;
+	/** @type {import('aws-lambda').APIGatewayProxyHandlerV2} */ return async (event) => {
+		const { rawPath, rawQueryString, cookies, headers, body, isBase64Encoded } = event;
+		console.log(event);
 
-		if (reqCookies) {
-			headers['cookie'] = reqCookies.join('; ');
+		if (cookies) {
+			headers['cookie'] = cookies.join('; ');
 		}
 
-		const query = new url.URLSearchParams(rawQueryString);
-		const encoding = isBase64Encoded ? 'base64' : headers['content-encoding'] || 'utf-8';
+		const requestEncoding = /** @type {BufferEncoding | undefined} */ (headers['content-encoding']);
+		const encoding = isBase64Encoded ? 'base64' : requestEncoding || 'utf-8';
 		const rawBody = typeof body === 'string' ? Buffer.from(body, encoding) : body;
 
-		const rendered = await app.render({
-			method: event.requestContext.http.method,
-			headers,
-			query,
-			path,
-			rawBody,
-		});
+		const url =
+			'https://' +
+			event.requestContext.domainName +
+			// TODO event.requestContext.domainName is the API Gateway domain... we don't seem to pass a custom Host through...
+			rawPath +
+			(rawQueryString ? '?' + rawQueryString : '');
 
+		const renderProps = {
+			method: event.requestContext.http.method,
+			url,
+			headers,
+			rawBody,
+		};
+		console.log({ renderProps });
+		const rendered = await app.render(renderProps);
 		if (rendered) {
 			const resp = {
-				headers: {},
-				cookies: [],
+				/** @type {{[k: string]: string}} */ headers: {},
+				/** @type {string[]} */ cookies: [],
 				body: rendered.body,
 				statusCode: rendered.status,
 			};
@@ -65,6 +65,7 @@ export function init(manifest) {
 			});
 			return resp;
 		}
+		console.log({ rendered });
 		return {
 			statusCode: 404,
 			body: 'Not found.',

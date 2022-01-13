@@ -1,12 +1,13 @@
-import { writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import glob from 'tiny-glob/sync.js';
 import esbuild from 'esbuild';
+import path from 'path';
 
 const files = fileURLToPath(new URL('./files', import.meta.url));
 
 /** @type {import('.')} */
-export default function ({ out = 'build' }) {
+export default function ({ out = 'build' } = {}) {
 	/** @type {import('@sveltejs/kit').Adapter} */
 	return {
 		name: 'lively-cdk-adapter',
@@ -21,13 +22,34 @@ export default function ({ out = 'build' }) {
 			});
 
 			builder.log.minor('Generating serverless functions...');
-			builder.writeServer(`${out}/server`);
+
+			// Outputs the SvelteKit server code
+			const tempServerFolder = builder.getBuildDirectory('server');
+			builder.writeServer(tempServerFolder);
+			console.log(tempServerFolder);
 
 			builder.log.minor('building lambda compatible nodejs code...');
 			builder.mkdirp(`${out}/lambda/handler`);
-			builder.mkdirp(`${out}/lambda/server`);
+
+			// Copy and transform each server file first
+			builder.copy(tempServerFolder, `${out}/lambda/`);
+			glob('**/*.js', { cwd: tempServerFolder }).forEach((file) => {
+				const inputPath = `${tempServerFolder}/${file}`;
+				const outputPath = `${out}/lambda/${file}`;
+				const input = readFileSync(inputPath, 'utf8');
+				const output = esbuild.transformSync(input, { format: 'cjs', target: 'node14' }).code;
+				console.log('writing ', outputPath);
+				builder.mkdirp(path.dirname(outputPath));
+				writeFileSync(outputPath, output);
+			});
+
+			// Then build the entry points
+			// TODO figure out how we could use the manifest to read the required files
+			// and output them to a folder per function that we can then upload to aws lambda
+			// and cut down on the size of the code in the folder
 			esbuild.buildSync({
-				entryPoints: [`${out}/server/app.js`, ...glob(`${out}/server/nodes/*.js`)],
+				entryPoints: [`${tempServerFolder}/app.js`, ...glob(`${tempServerFolder}/nodes/*.js`)],
+				platform: 'node',
 				format: 'cjs',
 				target: 'node14',
 				bundle: true,

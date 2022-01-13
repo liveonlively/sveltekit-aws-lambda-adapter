@@ -1,15 +1,18 @@
 # SvelteKit Lambda CDK Adapter
 
-This is just an example right now and not a published package.
-We use this to deploy SvelteKit 1.0.0-next.216+ to AWS Lambda.
+This is just an example right now and not a published package. We have a version we were using before the Januar 2022 breaking changes to SvelteKit adapters (multiple entry points and url param).
+
+This is the work-in-progress to be able to deploy SvelteKit 1.0.0-next.218+ to AWS Lambda.
 
 There is not an official AWS Lambda adapter so we built a custom one and wanted to share it with the Svelte community for feedback.
 
-We run `svelte-kit build` with this adapter. The adapter will output build files to the specified "out" folder in the commit (defaults to the "build" folder in the current working directory from where you build your SvelteKit project).
+We import this adapter and add it to svelte.config.js and run `svelte-kit build`. The adapter will output build files to the specified "out" folder in the config. Default out location is the "build" folder in the current working directory from where you build your SvelteKit project.
 
-We additionally have it create a routes.json file at `build/lambda/routes.json`. The JSON data is an object that maps API Gateway paths to the built nodejs entries.
+It additionally create a routes.json file at `build/lambda/routes.json`. The JSON data is an object that maps API Gateway paths to the built nodejs entries.
 
 It currently builds for a NodeJS 14 runtime in the ESBuild settings.
+
+## CDK Deployment ##
 
 We then run a deploy to our AWS account using our CDK stack. Here is an excerpt of our CDK code that deploys SvelteKit.
 
