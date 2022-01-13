@@ -1,12 +1,11 @@
 {
 	"name": "@golively/sveltekit-aws-lambda-adapter",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"repository": {
 		"type": "git",
 		"url": "https://github.org/golively/lively"
 	},
-	"private": true,
-	"license": "NOLICENSE",
+	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": {
@@ -25,7 +24,7 @@
   },
 	"scripts": {
 		"dev": "rimraf files && rollup -cw",
-		"build": "rimraf files && rollup -c",
+		"build": "rimraf files && rollup -c && ",
 		"test": "node test/test-build.js",
 		"lint": "eslint --ignore-path .gitignore \"**/*.{ts,js,svelte}\" && npm run check-format",
 		"format": "npm run check-format -- --write",
